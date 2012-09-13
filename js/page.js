@@ -1,4 +1,6 @@
 $(document).ready(function () {
 	//main
-	alert('jquery present');
+	var bigGrid = new grid('bigGrid',15,20,'div.left-col');
+	bigGrid.render();
+	
 });
