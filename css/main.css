@@ -1,3 +1,32 @@
-body {
 
+body {
+    
+}
+
+div.gridholder {
+    user-select: none;    
+}
+
+div.gridholder div.gridrow {
+    float: none;
+    clear: both;
+}
+
+div.gridholder div.gridrow div.tileholder {
+    width: 10px;
+    height: 10px;
+
+    border: 1px solid #333;
+    float: left;
+    margin-top: -1px;
+    margin-left: -1px;
+    cursor: pointer;
+}
+
+div.gridholder div.gridrow div.tileholder.on {
+    background: #555;    
+}
+
+div.gridholder div.gridrow div.tileholder.off {
+    background: #eee;    
 }
