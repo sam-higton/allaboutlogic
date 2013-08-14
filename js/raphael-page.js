@@ -275,6 +275,7 @@ function asteroidController (canvas) {
     this.sizeRange = [5,30];
     this.speedRange = [10,100];
     this.directionRange = [0,359];
+    this.sectorMap = new sectorMap();
     
     this.addAsteroid = function (posX,posY,direction,speed,size) {
     
@@ -306,31 +307,147 @@ function asteroidController (canvas) {
         }
         
         //calculate collisions with other asteroids
-        for(var i in this.asteroidList) {
-            for(var j in this.asteroidList) {
-                if(i != j) {
-                    //do rudimentary check to keep expensive collision checks to a minumum
-                    var difX = this.asteroidList[i].pos[0] - this.asteroidList[j].pos[0];
-                    var difY = this.asteroidList[i].pos[1] - this.asteroidList[j].pos[1];
-                    if((difX < 60 && difX > -60) && (difY < 60 && difY > -60)) {
-                        this.asteroidList[i].element.attr({fill: '#00F'});
-                        //check for collision
-                        var bBoxA = this.asteroidList[i].element.getBBox();
-                        var bBoxB = this.asteroidList[j].element.getBBox();
-                        if(Raphael.isBBoxIntersect(bBoxA,bBoxB)) {
-                            //console.log('collision');
-                            this.asteroidList[i].element.attr({fill: '#0F0'});    
-                        }
+        //TODO: this is really slow, implement quadtree
+//        for(var i in this.asteroidList) {
+//            for(var j in this.asteroidList) {
+//                if(i != j) {
+//                    //do rudimentary check to keep expensive collision checks to a minumum
+//                    var difX = this.asteroidList[i].pos[0] - this.asteroidList[j].pos[0];
+//                    var difY = this.asteroidList[i].pos[1] - this.asteroidList[j].pos[1];
+//                    if((difX < 60 && difX > -60) && (difY < 60 && difY > -60)) {
+//                        this.asteroidList[i].element.attr({fill: '#00F'});
+//                        //check for collision
+//                        var bBoxA = this.asteroidList[i].element.getBBox();
+//                        var bBoxB = this.asteroidList[j].element.getBBox();
+//                        if(Raphael.isBBoxIntersect(bBoxA,bBoxB)) {
+//                            //console.log('collision');
+//                            this.asteroidList[i].element.attr({fill: '#0F0'});    
+//                        }
+//                    }
+//                }
+//            }
+//        }
+
+    //shiny new sector mapped collision detection
+    //empty sector map
+    this.sectorMap.emptySectors();
+    //add elements to sectormap
+    for(var i in this.asteroidList) {
+        this.sectorMap.addToSector(this.asteroidList[i]);    
+    }
+    
+    //loop through sectors and calculate collisions
+    for(var i in this.sectorMap.sectorList) {
+        for (var j in this.sectorMap.sectorList[i]) { 
+            var sectorElements = this.sectorMap.sectorList[i][j].elementList;
+            if(sectorElements.length > 1) {
+                   for(var i in this.sectorElements) {
+                        for(var j in this.sectorElements) {
+                            if(i != j) {
+                                //do rudimentary check to keep expensive collision checks to a minumum
+                                var difX = this.sectorElements[i].pos[0] - this.sectorElements[j].pos[0];
+                                var difY = this.sectorElements[i].pos[1] - this.sectorElements[j].pos[1];
+                                if((difX < 60 && difX > -60) && (difY < 60 && difY > -60)) {
+                                    this.sectorElements[i].element.attr({fill: '#00F'});
+                                    //check for collision
+                                    var bBoxA = this.sectorElements[i].element.getBBox();
+                                    var bBoxB = this.sectorElements[j].element.getBBox();
+                                    if(Raphael.isBBoxIntersect(bBoxA,bBoxB)) {
+                                        //console.log('collision');
+                                        this.sectorElements[i].element.attr({fill: '#0F0'});    
+                                    }
+                                }
+                            }
+                        } 
                     }
-                }
-            }
         }
+    }
+
+
+
     }
     
     this._getRandomInt = function (range) {
         return Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
     }
     
+}
+
+//This is a very simple implementation of a sort of quadtree,
+//whereby I divide the screen up into 16 sectors for collision
+//detection
+function sectorMap () {
+ 
+    this.sectorList = [];
+    
+    this.generateSectors = function () {
+        var sectorWidth = GLOBAL_screenWidth / 4;
+        var sectorHeight = GLOBAL_screenHeight / 4;
+        
+        for(var i = 0; i < 4; i++) {
+            var screenRow = [];
+            for(var j = 0; j < 4; j++) {
+                var topLeft = [j*sectorWidth,i*sectorHeight];  
+                var bottomRight = [j*sectorWidth + sectorWidth, i * sectorHeight + sectorHeight];
+                var tempSector = new sector(topLeft,bottomRight);
+                screenRow.push(tempSector);
+            }
+            this.sectorList.push(screenRow);
+            
+        }
+        
+    }
+    this.generateSectors();
+    
+    this.emptySectors = function () {
+    
+        for(var i in this.sectorList) {
+            for(var j in this.sectorList[i]) {
+                this.sectorList[i][j].elementList = [];    
+            }
+        }
+    
+    }
+    
+    this.addToSector = function (element) {
+        
+        var posX = element.pos[0];
+        var posY = element.pos[1];
+        
+        for(var i in this.sectorList) {
+        
+            if (posY > this.sectorList[i][0].topLeft[1] && posY < this.sectorList[i][0].bottomRight[1]) {
+                
+                for (var j in this.sectorList[i]) {
+                
+                    if(posX > this.sectorList[i][j].topLeft[0] && posX < this.sectorList[i][j].bottomRight[0]) {
+                     
+                        this.sectorList[i][j].addElement(element)
+                        break;
+                     
+                    }
+                
+                }
+                break;
+                
+            }
+        
+        }
+        
+    }
+    
+ 
+}
+
+function sector (topLeft,bottomRight) {
+   this.topLeft = topLeft;
+   this.bottomRight = bottomRight;
+   this.elementList = [];
+   
+   this.addElement = function (element) {
+        this.elementList.push(element);   
+   }
+   
 }
 
 $(document).ready(function () {
